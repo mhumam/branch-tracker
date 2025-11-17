@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { RefreshCw, Clock, CheckCircle, XCircle, ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight, Search } from "lucide-react";
 import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
@@ -144,7 +144,7 @@ const App = () => {
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                         <input
                             type="text"
-                            placeholder="Cari branch"
+                            placeholder="Search branch"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -174,8 +174,8 @@ const App = () => {
                         }}
                         className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
-                        <option value={10}>10 per halaman</option>
-                        <option value={20}>20 per halaman</option>
+                        <option value={10}>10 per page</option>
+                        <option value={20}>20 per page</option>
                     </select>
                 </div>
             </div>
@@ -186,13 +186,13 @@ const App = () => {
                     </div>
                 ) : data?.data?.length === 0 ? (
                     <div className="bg-white rounded-xl shadow-sm p-12 text-center">
-                        <p className="text-gray-500 text-lg">Tidak ada branch yang ditemukan</p>
+                        <p className="text-gray-500 text-lg">No branches found</p>
                     </div>
                 ) : (
                     <>
                         {/* Results Info */}
                         <div className="mb-4 text-sm text-gray-600">
-                            Menampilkan {startIndex + 1}-{Math.min(startIndex + itemsPerPage, data?.totalData)} dari {data?.totalData} branch
+                        Showing {startIndex + 1}-{Math.min(startIndex + itemsPerPage, data?.totalData)} of {data?.totalData} branches
                         </div>
                         {
                             data?.data?.map((branch, key) => (
@@ -230,7 +230,7 @@ const App = () => {
                     <div className="flex flex-col md:flex-row items-center justify-between gap-4">
                         {/* Page Info */}
                         <div className="text-sm text-gray-600">
-                            Halaman {currentPage} dari {totalPages}
+                            Page  {currentPage} of {totalPages}
                         </div>
 
                         {/* Pagination Buttons */}
@@ -293,7 +293,7 @@ const App = () => {
 
                         {/* Quick Jump */}
                         <div className="flex items-center gap-2">
-                            <span className="text-sm text-gray-600">Ke halaman:</span>
+                            <span className="text-sm text-gray-600">Go to page:</span>
                             <input
                                 type="number"
                                 min="1"
