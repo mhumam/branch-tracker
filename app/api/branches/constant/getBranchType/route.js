@@ -1,10 +1,17 @@
 import { NextResponse } from 'next/server';
 import axios from 'axios';
 
-export async function GET() {
+import { getCredentials } from '@/app/lib/bitbucket';
+
+export async function GET(request) {
+    const creds = getCredentials(request);
+    if (creds.error) return NextResponse.json({ error: creds.error }, { status: creds.status });
+
+    const { username, appPassword, workspace, repoSlug, domainApi } = creds;
+
     const env = ['dev', 'staging', 'uat', 'uat-dab', 'testing-operation', 'master']
     const pagelen = 100;
-    const baseUrl = `${process.env.bitbucket_domain_api}/2.0/repositories/${process.env.bitbucket_workspace}/${process.env.bitbucket_repo_slug}/refs/branches`;
+    const baseUrl = `${domainApi}/2.0/repositories/${workspace}/${repoSlug}/refs/branches`;
     let nextUrl = `${baseUrl}?pagelen=${pagelen}`;
     let data = [];
     
@@ -13,8 +20,8 @@ export async function GET() {
             const { data: response } = await axios.get(nextUrl,
                 {
                     auth: {
-                        username: process.env.bitbucket_username,
-                        password: process.env.bitbucket_app_password
+                        username: username,
+                        password: appPassword
                     },
                 });
                 

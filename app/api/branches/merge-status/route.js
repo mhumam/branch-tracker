@@ -1,9 +1,15 @@
 import { NextResponse } from 'next/server';
 import axios from 'axios';
 
+import { getCredentials } from '@/app/lib/bitbucket';
+
 export async function GET(request) {
+    const creds = getCredentials(request);
+    if (creds.error) return NextResponse.json({ error: creds.error }, { status: creds.status });
+
+    const { username, appPassword, workspace, repoSlug, domainApi } = creds;
     const { searchParams } = new URL(request.url);
-    
+
     try { 
         const toBranches = searchParams?.getAll('to');
         const fromBranch = searchParams?.get('from');
@@ -17,11 +23,11 @@ export async function GET(request) {
         const promises = toBranches?.map(async (toBranch) => {
             try {
                 const response = await axios.get(
-                    `${process.env.bitbucket_domain_api}/2.0/repositories/${process.env.bitbucket_workspace}/${process.env.bitbucket_repo_slug}/commits`,
+                    `${domainApi}/2.0/repositories/${workspace}/${repoSlug}/commits`,
                     {
                         auth: {
-                            username: process.env.bitbucket_username,
-                            password: process.env.bitbucket_app_password
+                            username: username,
+                            password: appPassword
                         },
                         params: {
                             include: fromBranch,

@@ -1,12 +1,29 @@
 import { NextResponse } from 'next/server';
 import axios from 'axios';
 
+import { getCredentials } from '@/app/lib/bitbucket';
+
 export async function GET(request) {
+    const creds = getCredentials(request);
+    if (creds.error) return NextResponse.json({ error: creds.error }, { status: creds.status });
+
+    const { username, appPassword, workspace, repoSlug, domainApi } = creds;
+
     const { searchParams, origin } = new URL(request.url);
     const name = searchParams.get('name') ?? null;
     const branchType = searchParams.get('branchType') ?? null;
     const pageParam = Number(searchParams.get('page')) || 1;
-    const sizeParam = searchParams.get('size') || 10;
+    const sizeParam = Number(searchParams.get('size')) || 10;
+    const primaryBranch = searchParams.get('primaryBranch') || null;
+    
+    // Headers to pass to sub-requests
+    const bbHeaders = {
+        'x-bb-username': username,
+        'x-bb-password': appPassword,
+        'x-bb-workspace': workspace,
+        'x-bb-repo-slug': repoSlug,
+        'x-bb-domain': domainApi
+    };
 
     const buildSearchQuery = (name, branchType) => {
         if (name && branchType) {
@@ -23,11 +40,11 @@ export async function GET(request) {
 
     try {
         const { data } = await axios.get(
-            `${process.env.bitbucket_domain_api}/2.0/repositories/${process.env.bitbucket_workspace}/${process.env.bitbucket_repo_slug}/refs/branches`,
+            `${domainApi}/2.0/repositories/${workspace}/${repoSlug}/refs/branches`,
             {
                 auth: {
-                    username: process.env.bitbucket_username,
-                    password: process.env.bitbucket_app_password,
+                    username: username,
+                    password: appPassword,
                 },
                 params: {
                     page: pageParam,
@@ -39,28 +56,23 @@ export async function GET(request) {
 
         const branches = data?.values ?? [];
 
-        const mergeResults = await Promise.all(
+        // Task 4: Only check primary merge status if requested
+        const primaryStatusResults = await Promise.all(
             branches.map(async (branch) => {
-                if (!branch?.name) return null;
+                if (!branch?.name || !primaryBranch) return null;
 
                 const mergeUrl = new URL('/api/branches/merge-status', origin);
                 mergeUrl.searchParams.set('from', branch.name);
-                mergeUrl.searchParams.append('to', 'staging');
-                mergeUrl.searchParams.append('to', 'uat');
-                mergeUrl.searchParams.append('to', 'testing-operation');
-                mergeUrl.searchParams.append('to', 'master');
+                mergeUrl.searchParams.append('to', primaryBranch);
 
                 try {
-                    const { data: mergeData } = await axios.get(mergeUrl.toString());
-                    return {
-                        staging: mergeData?.mergeStatus?.staging?.merged ?? false,
-                        uat: mergeData?.mergeStatus?.uat?.merged ?? false,
-                        'testing-operation': mergeData?.mergeStatus?.['testing-operation']?.merged ?? false,
-                        master: mergeData?.mergeStatus?.master?.merged ?? false 
-                    };
+                    const { data: mergeData } = await axios.get(mergeUrl.toString(), {
+                        headers: bbHeaders
+                    });
+                    return mergeData?.mergeStatus?.[primaryBranch]?.merged ?? false;
                 } catch (error) {
-                    console.error(`Failed merge-status for ${branch.name}`, error?.message);
-                    return null;
+                    console.error(`Failed primary-merge-status for ${branch.name}`, error?.message);
+                    return false;
                 }
             })
         );
@@ -70,7 +82,8 @@ export async function GET(request) {
             branchType: branch?.name?.split('/')?.[0] ?? null,
             authorName: branch?.target?.author?.user?.display_name ?? null,
             lastCommitDate: branch?.target?.date ?? null,
-            mergeStatus: mergeResults[index],
+            primaryMergeStatus: primaryStatusResults[index],
+            mergeStatus: null, // Full status will be loaded on demand
         }));
         
         const rewriteUrl = (remoteUrl) => {
