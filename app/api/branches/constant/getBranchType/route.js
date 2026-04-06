@@ -9,7 +9,22 @@ export async function GET(request) {
 
     const { username, appPassword, workspace, repoSlug, domainApi } = creds;
 
-    const env = ['dev', 'staging', 'uat', 'uat-dab', 'testing-operation', 'master']
+    const { searchParams } = new URL(request.url);
+    const targetBranchesParam = searchParams.get('targetBranches');
+    
+    let env = ['dev', 'staging', 'uat', 'uat-dab', 'testing-operation', 'master'];
+    if (targetBranchesParam) {
+        try {
+            const parsed = JSON.parse(targetBranchesParam);
+            const dynamicTargets = parsed.map(b => b.branchName || b);
+            if (dynamicTargets.length > 0) {
+                env = dynamicTargets;
+            }
+        } catch (e) {
+            console.error('Failed to parse targetBranches in getBranchType', e);
+        }
+    }
+    
     const pagelen = 100;
     const baseUrl = `${domainApi}/2.0/repositories/${workspace}/${repoSlug}/refs/branches`;
     let nextUrl = `${baseUrl}?pagelen=${pagelen}`;

@@ -149,8 +149,11 @@ const App = () => {
     });
     
     const { data: branchTypeList } = useQuery({
-        queryKey: ['branchTypeList', config],
-        queryFn: () => axios.get('/api/branches/constant/getBranchType', { headers: getHeaders() }).then((res) => res.data),
+        queryKey: ['branchTypeList', config, targetBranches],
+        queryFn: () => {
+            const targetBranchesParam = `?targetBranches=${encodeURIComponent(JSON.stringify(targetBranches))}`;
+            return axios.get(`/api/branches/constant/getBranchType${targetBranchesParam}`, { headers: getHeaders() }).then((res) => res.data);
+        },
         refetchOnWindowFocus: false,
         retry: false
     });

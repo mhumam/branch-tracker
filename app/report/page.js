@@ -56,9 +56,12 @@ const ReportPageContent = () => {
     });
 
     const { data: branchTypeList } = useQuery({
-        queryKey: ['branchTypeList', config],
-        queryFn: () => axios.get('/api/branches/constant/getBranchType', { headers: getHeaders() }).then((res) => res.data),
-        enabled: isConfigured,
+        queryKey: ['branchTypeList', config, targetBranches],
+        queryFn: () => {
+            const targetBranchesParam = `?targetBranches=${encodeURIComponent(JSON.stringify(targetBranches))}`;
+            return axios.get('/api/branches/constant/getBranchType' + targetBranchesParam, { headers: getHeaders() }).then((res) => res.data);
+        },
+        enabled: isConfigured && isTargetConfigured,
         refetchOnWindowFocus: false
     });
 
