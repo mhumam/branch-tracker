@@ -17,7 +17,7 @@ const queryClient = new QueryClient();
 const ReportPageContent = () => {
     const router = useRouter();
     const { config, isConfigured, getHeaders } = useBitbucketConfig();
-    const { targetBranches, isTargetConfigured } = useTargetBranches();
+    const { targetBranches, primaryBranch, isTargetConfigured } = useTargetBranches();
     const [mounted, setMounted] = useState(false);
 
     // Ensure we are client-side before rendering or guarding
@@ -29,21 +29,19 @@ const ReportPageContent = () => {
     }, [isConfigured, isTargetConfigured, router]);
 
     const [filters, setFilters] = useState({
-        targetBranch: 'master',
         merged: 'all',
         branchType: 'all',
         name: ''
     });
 
     const { data: report, isLoading, isError, refetch } = useQuery({
-        queryKey: ['reportData', filters, config],
+        queryKey: ['reportData', filters, primaryBranch, config],
         queryFn: async () => {
             const params = {
-                targetBranch: filters.targetBranch,
+                primaryBranch: primaryBranch,
                 merged: filters.merged === 'all' ? undefined : filters.merged,
                 branchType: filters.branchType === 'all' ? undefined : filters.branchType,
-                name: filters.name || undefined,
-                targetBranches: JSON.stringify(targetBranches)
+                name: filters.name || undefined
             };
 
             const res = await axios.get('/api/report', { 
@@ -67,8 +65,7 @@ const ReportPageContent = () => {
     const handleExportCSV = () => {
         if (!report?.data) return;
         
-        const headers = ['Branch Name', 'Branch Type', 'Author', 'Last Commit'];
-        targetBranches.forEach(b => headers.push(b.displayName));
+        const headers = ['Branch Name', 'Branch Type', 'Author', 'Last Commit', `${primaryBranch} Status`];
 
         const csvRows = [headers.join(',')];
 
@@ -81,7 +78,7 @@ const ReportPageContent = () => {
             ];
 
             targetBranches.forEach(target => {
-                row.push(branch.mergeStatus?.[target.branchName] ? 'Merged' : 'Not Merged');
+                row.push(branch.primaryMergeStatus ? 'Merged' : 'Not Merged');
             });
 
             csvRows.push(row.join(','));
@@ -102,17 +99,17 @@ const ReportPageContent = () => {
     const handleCopyMarkdown = () => {
         if (!report?.data) return;
         
-        let md = `## Branch Merge Report — ${filters.targetBranch} — ${new Date().toLocaleDateString()}\n\n`;
+        let md = `## Branch Merge Report — ${primaryBranch} — ${new Date().toLocaleDateString()}\n\n`;
         md += `**Summary:** ${report.summary.merged} Merged / ${report.summary.notMerged} Not Merged out of ${report.summary.total} total branches\n\n`;
         
-        const headerRow = `| Branch | Author | Last Commit | ${targetBranches.map(b => b.displayName).join(' | ')} |`;
-        const separatorRow = `|:---|:---|:---|${targetBranches.map(() => ':---:').join('|')}|`;
+        const headerRow = `| Branch | Author | Last Commit | ${primaryBranch} Status |`;
+        const separatorRow = `|:---|:---|:---|:---:|`;
         
         md += headerRow + '\n' + separatorRow + '\n';
 
         report.data.slice(0, 100).forEach(branch => {
-            const statusIcons = targetBranches.map(t => branch.mergeStatus?.[t.branchName] ? '✅' : '❌').join(' | ');
-            md += `| ${branch.name} | ${branch.authorName || 'N/A'} | ${branch.lastCommitDate ? branch.lastCommitDate.split('T')[0] : 'N/A'} | ${statusIcons} |\n`;
+            const statusIcon = branch.primaryMergeStatus ? '✅' : '❌';
+            md += `| ${branch.name} | ${branch.authorName || 'N/A'} | ${branch.lastCommitDate ? branch.lastCommitDate.split('T')[0] : 'N/A'} | ${statusIcon} |\n`;
         });
 
         if (report.data.length > 100) md += `\n*...and ${report.data.length - 100} more branches*`;
@@ -187,17 +184,19 @@ const ReportPageContent = () => {
                             filters={filters} 
                             onFilterChange={setFilters} 
                             targetBranches={targetBranches} 
+                            primaryBranch={primaryBranch}
                             branchTypes={branchTypeList?.data}
                         />
 
                         <ReportSummary 
                             summary={report?.summary} 
-                            targetBranch={filters.targetBranch} 
+                            targetBranch={primaryBranch} 
                         />
 
                         <ReportTable 
                             data={report?.data} 
                             targetBranches={targetBranches} 
+                            primaryBranch={primaryBranch}
                         />
                     </>
                 )}

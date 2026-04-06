@@ -9,20 +9,11 @@ export async function GET(request) {
     const { username, appPassword, workspace, repoSlug, domainApi } = creds;
     const { searchParams, origin } = new URL(request.url);
 
-    const targetBranch = searchParams.get('targetBranch') || 'master';
+    const primaryBranch = searchParams.get('primaryBranch') || 'master';
     const mergedFilter = searchParams.get('merged'); // 'true' | 'false' | null
     const nameFilter = searchParams.get('name') ?? null;
     const branchTypeFilter = searchParams.get('branchType') ?? null;
     
-    // For calculating merge status, use all configured target branches from user
-    const targetBranchesFromUser = searchParams.get('targetBranches');
-    let targetBranches = ['staging', 'uat', 'testing-operation', 'master'];
-    
-    if (targetBranchesFromUser) {
-        const parsed = JSON.parse(targetBranchesFromUser);
-        // Ensure it's an array of strings, not objects (like {branchName: 'master'})
-        targetBranches = parsed.map(b => typeof b === 'string' ? b : b.branchName);
-    }
     const bbHeaders = {
         'x-bb-username': username,
         'x-bb-password': appPassword,
@@ -37,7 +28,7 @@ export async function GET(request) {
 
         // 1. Fetch Page 1
         const initialRes = await axios.get(`${origin}/api/branches`, {
-            params: { page: 1, size: pageSize, name: nameFilter, branchType: branchTypeFilter, targetBranches: JSON.stringify(targetBranches) },
+            params: { page: 1, size: pageSize, name: nameFilter, branchType: branchTypeFilter, primaryBranch: primaryBranch },
             headers: bbHeaders
         });
 
@@ -50,7 +41,7 @@ export async function GET(request) {
             for (let page = 2; page <= totalPages; page++) {
                 pagePromises.push(
                     axios.get(`${origin}/api/branches`, {
-                        params: { page, size: pageSize, name: nameFilter, branchType: branchTypeFilter, targetBranches: JSON.stringify(targetBranches) },
+                        params: { page, size: pageSize, name: nameFilter, branchType: branchTypeFilter, primaryBranch: primaryBranch },
                         headers: bbHeaders
                     }).then(res => res.data.data)
                 );
@@ -64,21 +55,22 @@ export async function GET(request) {
         // 3. Status Filtering (Client side filtering from server side perspective)
         let filteredBranches = allBranches;
         if (mergedFilter === 'true') {
-            filteredBranches = allBranches.filter(b => b.mergeStatus?.[targetBranch] === true);
+            filteredBranches = allBranches.filter(b => b.primaryMergeStatus === true);
         } else if (mergedFilter === 'false') {
-            filteredBranches = allBranches.filter(b => b.mergeStatus?.[targetBranch] === false);
+            filteredBranches = allBranches.filter(b => b.primaryMergeStatus === false);
         }
 
         // 4. Calculate Summary
         const summary = {
             total: allBranches.length,
-            merged: allBranches.filter(b => b.mergeStatus?.[targetBranch] === true).length,
-            notMerged: allBranches.filter(b => b.mergeStatus?.[targetBranch] === false).length,
+            merged: allBranches.filter(b => b.primaryMergeStatus === true).length,
+            notMerged: allBranches.filter(b => b.primaryMergeStatus === false).length,
+            primaryBranch
         };
 
         return NextResponse.json({
             reportDate: new Date().toISOString(),
-            targetBranch,
+            primaryBranch,
             summary,
             data: filteredBranches
         });

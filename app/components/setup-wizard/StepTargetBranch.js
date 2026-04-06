@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { Layers, Plus, Trash2, RotateCcw, ChevronRight, Star } from 'lucide-react';
 
 const StepTargetBranch = ({ onComplete }) => {

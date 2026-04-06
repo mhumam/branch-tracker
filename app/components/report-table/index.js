@@ -3,7 +3,7 @@
 import React from 'react';
 import { User, Calendar, GitBranch, CheckCircle2, XCircle } from 'lucide-react';
 
-const ReportTable = ({ data, targetBranches }) => {
+const ReportTable = ({ data, targetBranches, primaryBranch }) => {
     if (!data || data.length === 0) {
         return (
             <div className="bg-white rounded-[40px] shadow-sm border border-slate-100 p-24 text-center mt-8">
@@ -23,7 +23,7 @@ const ReportTable = ({ data, targetBranches }) => {
                             <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 border-b border-slate-50">Branch Name</th>
                             <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 border-b border-slate-50">Author</th>
                             <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 border-b border-slate-50">Last Commit</th>
-                            <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 border-b border-slate-50 text-center">Status</th>
+                            <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 border-b border-slate-50 text-center">{primaryBranch || 'Primary'} Status</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-50">
@@ -40,7 +40,7 @@ const ReportTable = ({ data, targetBranches }) => {
                                     </div>
                                 </td>
                                 <td className="px-8 py-6">
-                                    <div className="flex items-center gap-3">
+                                    <div className="flex items-center gap-3 whitespace-nowrap">
                                         <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 font-black text-[10px]">
                                             {branch.authorName?.[0] || <User className="w-3 h-3" />}
                                         </div>
@@ -48,7 +48,7 @@ const ReportTable = ({ data, targetBranches }) => {
                                     </div>
                                 </td>
                                 <td className="px-8 py-6">
-                                    <div className="flex items-center gap-2 text-slate-400">
+                                    <div className="flex items-center gap-2 text-slate-400 whitespace-nowrap">
                                         <Calendar className="w-4 h-4" />
                                         <span className="text-sm font-medium">
                                             {branch.lastCommitDate ? new Date(branch.lastCommitDate).toLocaleDateString('id-ID', {
@@ -58,20 +58,23 @@ const ReportTable = ({ data, targetBranches }) => {
                                     </div>
                                 </td>
                                 <td className="px-8 py-6">
-                                    <div className="flex flex-wrap items-center justify-center gap-2">
-                                        {targetBranches.map((target, tIdx) => (
-                                            <div 
-                                                key={tIdx} 
-                                                className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-[10px] font-black uppercase tracking-tighter transition-all ${
-                                                    branch.mergeStatus?.[target.branchName] 
-                                                        ? 'bg-emerald-50 border-emerald-100 text-emerald-600 shadow-sm' 
-                                                        : 'bg-slate-50 border-slate-100 text-slate-400 opacity-60 grayscale'
-                                                }`}
-                                            >
-                                                {branch.mergeStatus?.[target.branchName] ? <CheckCircle2 className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
-                                                {target.displayName}
-                                            </div>
-                                        ))}
+                                    <div className="flex justify-center flex-nowrap">
+                                        <div 
+                                            className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-[10px] font-black uppercase tracking-tighter transition-all whitespace-nowrap w-fit ${
+                                                branch.primaryMergeStatus === true
+                                                    ? 'bg-emerald-50 border-emerald-100 text-emerald-600 shadow-sm' 
+                                                    : branch.primaryMergeStatus === false
+                                                    ? 'bg-slate-50 border-slate-100 text-slate-400 opacity-60'
+                                                    : 'bg-slate-50 border-slate-100 text-slate-300 italic'
+                                            }`}
+                                        >
+                                            {branch.primaryMergeStatus === true ? (
+                                                <CheckCircle2 className="w-4 h-4" />
+                                            ) : branch.primaryMergeStatus === false ? (
+                                                <XCircle className="w-4 h-4" />
+                                            ) : null}
+                                            {branch.primaryMergeStatus === true ? 'Merged' : branch.primaryMergeStatus === false ? 'Not Merged' : '- Unknown'}
+                                        </div>
                                     </div>
                                 </td>
                             </tr>

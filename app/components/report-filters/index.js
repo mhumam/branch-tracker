@@ -1,9 +1,9 @@
 'use client';
 
 import React from 'react';
-import { Search, Filter, Layers } from 'lucide-react';
+import { Search, Filter, Layers, Star } from 'lucide-react';
 
-const ReportFilters = ({ filters, onFilterChange, targetBranches, branchTypes }) => {
+const ReportFilters = ({ filters, onFilterChange, targetBranches, branchTypes, primaryBranch }) => {
     return (
         <div className="bg-white p-6 rounded-[40px] shadow-sm border border-slate-100 mb-8 items-center flex flex-col lg:flex-row gap-6">
             <div className="flex-1 relative w-full lg:w-auto">
@@ -18,17 +18,15 @@ const ReportFilters = ({ filters, onFilterChange, targetBranches, branchTypes })
             </div>
 
             <div className="flex flex-wrap gap-4 w-full lg:w-auto">
-                <div className="flex items-center gap-3 px-6 py-4 bg-slate-50 rounded-[28px] transition-all focus-within:ring-4 focus-within:ring-blue-100">
-                    <Layers className="w-5 h-5 text-blue-500" />
-                    <select
-                        value={filters.targetBranch || ''}
-                        onChange={(e) => onFilterChange({ ...filters, targetBranch: e.target.value })}
-                        className="bg-transparent text-sm font-bold text-slate-700 outline-none cursor-pointer"
-                    >
-                        {targetBranches.map(branch => (
-                            <option key={branch.branchName} value={branch.branchName}>{branch.displayName}</option>
-                        ))}
-                    </select>
+                {/* Primary Branch Info (Static) */}
+                <div className="flex items-center gap-3 px-6 py-3 bg-emerald-50 border border-emerald-100 rounded-[24px] shadow-sm">
+                    <div className="bg-emerald-500/10 p-1.5 rounded-lg">
+                        <Star className="w-4 h-4 text-emerald-600 fill-emerald-600/20" />
+                    </div>
+                    <div>
+                        <p className="text-[9px] font-black uppercase text-emerald-600 tracking-wider">Primary Branch</p>
+                        <p className="text-xs font-bold text-slate-700">{primaryBranch || 'master'}</p>
+                    </div>
                 </div>
 
                 <div className="flex items-center gap-3 px-6 py-4 bg-slate-50 rounded-[28px] transition-all focus-within:ring-4 focus-within:ring-blue-100">
