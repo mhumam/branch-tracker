@@ -183,6 +183,13 @@ const App = () => {
         return pages;
     };
 
+    const getBitbucketUrl = (branchName) => {
+        const workspace = data?.workspace;
+        const repoSlug = data?.repoSlug;
+        if (!workspace || !repoSlug) return '#';
+        return `https://bitbucket.org/${workspace}/${repoSlug}/branch/${encodeURIComponent(branchName)}?dest=${encodeURIComponent(primaryBranch || 'master')}`;
+    };
+
     return (
         <div className="space-y-5">
             {/* ── Action Bar ────────────────────────────────────────────── */}
@@ -296,9 +303,14 @@ const App = () => {
                                                     {branch?.branchType || 'Unknown'}
                                                 </span>
                                             </div>
-                                            <h3 className="text-base sm:text-lg font-black text-slate-800 group-hover:text-blue-600 transition-colors break-all sm:break-normal leading-tight mb-3">
+                                            <a 
+                                                href={getBitbucketUrl(branch?.name)}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="block text-base sm:text-lg font-black text-slate-800 group-hover:text-blue-600 hover:underline transition-colors break-all sm:break-normal leading-tight mb-3"
+                                            >
                                                 {branch?.name}
-                                            </h3>
+                                            </a>
                                             <div className="flex flex-col sm:flex-row sm:flex-wrap gap-y-1.5 gap-x-5 text-xs sm:text-sm">
                                                 <div className="flex items-center gap-2 text-slate-600">
                                                     <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center font-bold text-blue-600 text-[10px] flex-shrink-0">

@@ -193,7 +193,13 @@ const ReportPageContent = () => {
                 ) : (
                     <>
                         <ReportSummary summary={report?.summary} targetBranch={primaryBranch} filteredCount={filteredData.length} />
-                        <ReportTable data={filteredData} targetBranches={targetBranches} primaryBranch={primaryBranch} />
+                        <ReportTable 
+                            data={filteredData} 
+                            targetBranches={targetBranches} 
+                            primaryBranch={primaryBranch} 
+                            workspace={report?.workspace}
+                            repoSlug={report?.repoSlug}
+                        />
                     </>
                 )}
 

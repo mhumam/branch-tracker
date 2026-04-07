@@ -108,6 +108,8 @@ export async function GET(request) {
         return NextResponse.json({
             reportDate: new Date().toISOString(),
             primaryBranch,
+            workspace,
+            repoSlug,
             summary,
             data: filteredBranches,
         });

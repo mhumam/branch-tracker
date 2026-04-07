@@ -3,7 +3,7 @@
 import React from 'react';
 import { User, Calendar, GitBranch, CheckCircle2, XCircle } from 'lucide-react';
 
-const ReportTable = ({ data, targetBranches, primaryBranch }) => {
+const ReportTable = ({ data, targetBranches, primaryBranch, workspace, repoSlug }) => {
     if (!data || data.length === 0) {
         return (
             <div className="bg-white rounded-2xl sm:rounded-3xl shadow-sm border border-slate-100 p-16 sm:p-24 text-center">
@@ -13,6 +13,12 @@ const ReportTable = ({ data, targetBranches, primaryBranch }) => {
             </div>
         );
     }
+
+    const getBitbucketUrl = (branchName) => {
+        if (!workspace || !repoSlug) return '#';
+        // Format: https://bitbucket.org/{workspace}/{repoSlug}/branch/{branchName}?dest={primaryBranch}
+        return `https://bitbucket.org/${workspace}/${repoSlug}/branch/${encodeURIComponent(branchName)}?dest=${encodeURIComponent(primaryBranch || 'master')}`;
+    };
 
     return (
         <div className="bg-white rounded-2xl sm:rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
@@ -34,9 +40,14 @@ const ReportTable = ({ data, targetBranches, primaryBranch }) => {
                                 {/* Branch Name + mobile extras */}
                                 <td className="px-5 sm:px-8 py-4">
                                     <div className="flex flex-col gap-1">
-                                        <span className="text-sm font-black text-slate-700 group-hover:text-indigo-600 transition-colors break-all sm:break-normal">
+                                        <a 
+                                            href={getBitbucketUrl(branch.name)}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-sm font-black text-slate-700 group-hover:text-indigo-600 hover:underline transition-colors break-all sm:break-normal"
+                                        >
                                             {branch.name}
-                                        </span>
+                                        </a>
                                         <div className="flex flex-wrap items-center gap-2">
                                             <span className="px-2 py-0.5 bg-slate-100 rounded-full text-[10px] font-black text-slate-500 uppercase tracking-tighter">
                                                 {branch.branchType || 'Unknown'}

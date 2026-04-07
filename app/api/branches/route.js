@@ -102,6 +102,8 @@ export async function GET(request) {
             currentPage: data?.page,
             pageLimit: data?.pagelen,
             totalData: data?.size,
+            workspace,
+            repoSlug,
             data: enrichedBranches,
             totalPages,
             next: rewriteUrl(data?.next),
