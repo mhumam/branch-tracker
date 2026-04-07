@@ -1,54 +1,56 @@
 'use client';
 
 import { useState } from 'react';
-import { encryptJSON, decryptJSON } from '@/app/lib/encryption';
 
-const CONFIG_KEY = 'v3_bb_config_encrypted';
+const CONFIG_KEY = 'v3_bb_configured'; // Hanya flag "sudah dikonfigurasi", bukan kredensial
 
 export function useBitbucketConfig() {
-    const [config, setConfig] = useState(() => {
-        if (typeof window === 'undefined') return null;
-        const saved = sessionStorage.getItem(CONFIG_KEY);
-        if (saved) {
-            try {
-                // Return decrypted JSON object
-                return decryptJSON(saved);
-            } catch (e) {
-                console.error('Failed to decrypt bitbucketConfig', e);
-                return null;
-            }
-        }
-        return null;
+    // Kita tidak menyimpan credentials di state/sessionStorage lagi.
+    // Hanya menyimpan flag bahwa session sudah dikonfigurasi.
+    const [isConfigured, setIsConfigured] = useState(() => {
+        if (typeof window === 'undefined') return false;
+        return !!sessionStorage.getItem(CONFIG_KEY);
     });
 
-    const isConfigured = !!(config !== null && 
-        config.username && config.appPassword && 
-        config.workspace && config.repoSlug);
+    /**
+     * Kirim credentials ke server untuk disimpan sebagai HttpOnly cookie.
+     * Credentials tidak pernah disimpan di browser storage maupun state.
+     */
+    const save = async (newConfig) => {
+        const response = await fetch('/api/auth/session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newConfig),
+        });
 
-    const save = (newConfig) => {
-        setConfig(newConfig);
-        const encrypted = encryptJSON(newConfig);
-        if (encrypted) {
-            sessionStorage.setItem(CONFIG_KEY, encrypted);
+        if (!response.ok) {
+            const data = await response.json();
+            throw new Error(data.error || 'Failed to save session');
         }
+
+        // Hanya simpan flag (bukan credentials)
+        sessionStorage.setItem(CONFIG_KEY, 'true');
+        setIsConfigured(true);
+        return true;
     };
 
-    const clear = () => {
-        setConfig(null);
+    /**
+     * Tandai bahwa session sudah dikonfigurasi (credentials sudah disimpan oleh komponen lain).
+     * Hanya update flag, TIDAK memanggil API session.
+     */
+    const markConfigured = () => {
+        sessionStorage.setItem(CONFIG_KEY, 'true');
+        setIsConfigured(true);
+    };
+
+    /**
+     * Hapus session (logout).
+     */
+    const clear = async () => {
+        await fetch('/api/auth/session', { method: 'DELETE' });
         sessionStorage.removeItem(CONFIG_KEY);
+        setIsConfigured(false);
     };
 
-    // Helper to build headers for fetch/axios
-    const getHeaders = () => {
-        if (!isConfigured) return {};
-        return {
-            'x-bb-username': config.username || '',
-            'x-bb-password': config.appPassword || '',
-            'x-bb-workspace': config.workspace || '',
-            'x-bb-repo-slug': config.repoSlug || '',
-            'x-bb-domain': config.domainApi || 'https://api.bitbucket.org',
-        };
-    };
-
-    return { config, isConfigured, save, clear, getHeaders };
+    return { isConfigured, save, markConfigured, clear };
 }

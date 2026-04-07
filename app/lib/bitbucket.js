@@ -1,13 +1,27 @@
-export function getCredentials(request) {
-    const username = request.headers.get('x-bb-username');
-    const appPassword = request.headers.get('x-bb-password');
-    const workspace = request.headers.get('x-bb-workspace');
-    const repoSlug = request.headers.get('x-bb-repo-slug');
-    const domainApi = request.headers.get('x-bb-domain') || 'https://api.bitbucket.org';
+import { getSession } from '@/app/lib/session';
 
-    if (!username || !appPassword || !workspace || !repoSlug) {
-        return { error: 'Missing Bitbucket credentials. Please configure via the app setup.', status: 401 };
+/**
+ * Membaca credentials Bitbucket dari server-side encrypted session cookie.
+ * Credentials tidak pernah terekspos ke browser (HttpOnly cookie).
+ */
+export async function getCredentials() {
+    const session = await getSession();
+
+    if (!session) {
+        return { error: 'No active session. Please configure credentials first.', status: 401 };
     }
 
-    return { username, appPassword, workspace, repoSlug, domainApi };
+    const { username, appPassword, workspace, repoSlug, domainApi } = session;
+
+    if (!username || !appPassword || !workspace || !repoSlug) {
+        return { error: 'Incomplete credentials in session. Please reconfigure.', status: 401 };
+    }
+
+    return {
+        username,
+        appPassword,
+        workspace,
+        repoSlug,
+        domainApi: domainApi || 'https://api.bitbucket.org',
+    };
 }

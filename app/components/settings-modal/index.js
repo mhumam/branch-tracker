@@ -41,15 +41,17 @@ const SettingsModal = ({
         setIsTesting(true);
         setTestStatus(null);
         try {
+            // 1. Simpan ke session dulu agar server bisa baca credentials
+            const saveRes = await fetch('/api/auth/session', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData),
+            });
+            if (!saveRes.ok) throw new Error('Failed to save session');
+
+            // 2. Test koneksi — credentials dibaca server dari cookie
             const response = await axios.get('/api/branches', {
                 params: { size: 1 },
-                headers: {
-                    'x-bb-username': formData.username,
-                    'x-bb-password': formData.appPassword,
-                    'x-bb-workspace': formData.workspace,
-                    'x-bb-repo-slug': formData.repoSlug,
-                    'x-bb-domain': formData.domainApi
-                }
             });
             if (response.data.error) throw new Error(response.data.error);
             setTestStatus('success');
@@ -84,9 +86,11 @@ const SettingsModal = ({
         setBranches(updated);
     };
 
-    const handleSave = () => {
+    const handleSave = async () => {
         if (activeTab === 'credentials') {
-            onSaveConfig(formData);
+            // Credentials sudah tersimpan ke session saat Test Connection.
+            // onSaveConfig() = markConfigured() — hanya set flag, tidak POST ke session.
+            onSaveConfig();
         } else {
             onSaveTargetBranches(branches);
         }
@@ -211,13 +215,11 @@ const SettingsModal = ({
                         </div>
                     )}
                 </div>
-                {config && (
-                    <div className="p-8 pt-0">
-                        <button onClick={() => { onClearAll(); onClose(); }} className="w-full flex items-center justify-center gap-2 py-4 text-rose-600 hover:bg-rose-50 rounded-2xl text-sm font-black transition-all border border-transparent hover:border-rose-100">
-                            <LogOut className="w-4 h-4" /> Reset All and Onboard Again
-                        </button>
-                    </div>
-                )}
+                <div className="p-8 pt-0">
+                    <button onClick={() => { onClearAll(); onClose(); }} className="w-full flex items-center justify-center gap-2 py-4 text-rose-600 hover:bg-rose-50 rounded-2xl text-sm font-black transition-all border border-transparent hover:border-rose-100">
+                        <LogOut className="w-4 h-4" /> Reset All and Onboard Again
+                    </button>
+                </div>
             </div>
         </div>
     );

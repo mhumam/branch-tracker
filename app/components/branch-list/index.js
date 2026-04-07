@@ -93,7 +93,7 @@ const StatusBranch = ({ branch, targetBranches, primaryBranch, fullStatus, isChe
 // ─── Main App Component ───────────────────────────────────────────────────────
 
 const App = () => {
-    const { config, isConfigured, save: saveConfig, clear: clearConfig, getHeaders } = useBitbucketConfig();
+    const { isConfigured, markConfigured, clear: clearConfig } = useBitbucketConfig();
     const { targetBranches, primaryBranch, save: saveTargetBranches, resetToDefault: resetTargetBranches, clear: clearTargetBranches } = useTargetBranches();
 
     const [searchTerm, setSearchTerm] = useState('');
@@ -104,8 +104,8 @@ const App = () => {
     const [fullStatusMap, setFullStatusMap] = useState({});
     const [checkingMap, setCheckingMap] = useState({});
 
-    const handleClearAll = () => {
-        clearConfig();
+    const handleClearAll = async () => {
+        await clearConfig();
         clearTargetBranches();
         window.location.reload();
     };
@@ -115,7 +115,7 @@ const App = () => {
         try {
             const params = new URLSearchParams({ from: branchName });
             targetBranches.forEach(t => params.append('to', t.branchName));
-            const res = await axios.get(`/api/branches/merge-status?${params.toString()}`, { headers: getHeaders() });
+            const res = await axios.get(`/api/branches/merge-status?${params.toString()}`);
             setFullStatusMap(prev => ({ ...prev, [branchName]: res.data.mergeStatus }));
         } catch (err) {
             console.error('Failed to check all statuses', err);
@@ -127,13 +127,12 @@ const App = () => {
     const debouncedFilter = useDebounce(searchTerm, 500);
 
     const { isLoading, data, isError, error } = useQuery({
-        queryKey: ['branchesData', debouncedFilter, currentPage, itemsPerPage, filterType, primaryBranch, config],
+        queryKey: ['branchesData', debouncedFilter, currentPage, itemsPerPage, filterType, primaryBranch],
         queryFn: async () => {
             const branchTypeFilter = filterType !== 'All' ? `&branchType=${filterType}` : '';
             try {
                 const res = await axios.get(
-                    `/api/branches?name=${debouncedFilter}&page=${currentPage}&size=${itemsPerPage}${branchTypeFilter}&primaryBranch=${primaryBranch}`,
-                    { headers: getHeaders() }
+                    `/api/branches?name=${debouncedFilter}&page=${currentPage}&size=${itemsPerPage}${branchTypeFilter}&primaryBranch=${primaryBranch}`
                 );
                 return res.data;
             } catch (err) {
@@ -145,10 +144,10 @@ const App = () => {
     });
 
     const { data: branchTypeList } = useQuery({
-        queryKey: ['branchTypeList', config, targetBranches],
+        queryKey: ['branchTypeList', targetBranches],
         queryFn: () => {
             const targetBranchesParam = `?targetBranches=${encodeURIComponent(JSON.stringify(targetBranches))}`;
-            return axios.get(`/api/branches/constant/getBranchType${targetBranchesParam}`, { headers: getHeaders() }).then((res) => res.data);
+            return axios.get(`/api/branches/constant/getBranchType${targetBranchesParam}`).then((res) => res.data);
         },
         refetchOnWindowFocus: false,
         retry: false
@@ -389,8 +388,8 @@ const App = () => {
             {/* Modal */}
             {showSettings && (
                 <SettingsModal
-                    config={config}
-                    onSaveConfig={saveConfig}
+                    config={null}
+                    onSaveConfig={markConfigured}
                     onClearAll={handleClearAll}
                     onClose={() => setShowSettings(false)}
                     targetBranches={targetBranches}

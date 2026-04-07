@@ -4,7 +4,7 @@ import axios from 'axios';
 import { getCredentials } from '@/app/lib/bitbucket';
 
 export async function GET(request) {
-    const creds = getCredentials(request);
+    const creds = await getCredentials();
     if (creds.error) return NextResponse.json({ error: creds.error }, { status: creds.status });
 
     const { username, appPassword, workspace, repoSlug, domainApi } = creds;

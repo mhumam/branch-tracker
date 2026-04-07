@@ -4,8 +4,8 @@ import React, { useState } from 'react';
 import { Settings, Eye, EyeOff, CheckCircle2, AlertCircle, RefreshCw, Key } from 'lucide-react';
 import axios from 'axios';
 
-const StepCredentials = ({ config, onNext }) => {
-    const [formData, setFormData] = useState(config || {
+const StepCredentials = ({ onNext }) => {
+    const [formData, setFormData] = useState({
         username: '',
         appPassword: '',
         workspace: '',
@@ -26,21 +26,23 @@ const StepCredentials = ({ config, onNext }) => {
         setIsTesting(true);
         setTestStatus(null);
         try {
+            // 1. Simpan dulu ke server session (HttpOnly cookie)
+            const saveRes = await fetch('/api/auth/session', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData),
+            });
+            if (!saveRes.ok) throw new Error('Failed to save session');
+
+            // 2. Test koneksi — server akan baca credentials dari cookie
             const response = await axios.get('/api/branches', {
                 params: { size: 1 },
-                headers: {
-                    'x-bb-username': formData.username,
-                    'x-bb-password': formData.appPassword,
-                    'x-bb-workspace': formData.workspace,
-                    'x-bb-repo-slug': formData.repoSlug,
-                    'x-bb-domain': formData.domainApi
-                }
             });
-            
+
             if (response.data.error) {
                 throw new Error(response.data.error);
             }
-            
+
             setTestStatus('success');
         } catch (error) {
             setTestStatus('error');
@@ -48,6 +50,11 @@ const StepCredentials = ({ config, onNext }) => {
         } finally {
             setIsTesting(false);
         }
+    };
+
+    const handleNext = () => {
+        // onNext tidak perlu formData lagi — credentials sudah ada di server session
+        onNext();
     };
 
     const isComplete = formData.username && formData.appPassword && formData.workspace && formData.repoSlug;
@@ -150,7 +157,7 @@ const StepCredentials = ({ config, onNext }) => {
                         )}
                     </button>
                     <button
-                        onClick={() => onNext(formData)}
+                        onClick={handleNext}
                         disabled={testStatus !== 'success'}
                         className="flex-1 py-4 bg-blue-600 text-white rounded-2xl text-sm font-bold hover:bg-blue-700 active:scale-95 transition-all shadow-xl shadow-blue-200 disabled:opacity-50 disabled:grayscale disabled:shadow-none"
                     >

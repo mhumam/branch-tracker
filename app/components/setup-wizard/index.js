@@ -8,11 +8,13 @@ import { useBitbucketConfig, useTargetBranches } from '@/app/hooks';
 
 const SetupWizard = () => {
     const [step, setStep] = useState(1);
-    const { config, save: saveConfig } = useBitbucketConfig();
+    const { markConfigured } = useBitbucketConfig();
     const { save: saveTargets } = useTargetBranches();
 
-    const handleNextStep = (credentials) => {
-        saveConfig(credentials);
+    const handleNextStep = () => {
+        // Credentials sudah tersimpan di HttpOnly session cookie oleh StepCredentials.
+        // Kita hanya set flag isConfigured di sini.
+        markConfigured();
         setStep(2);
     };
 
@@ -60,7 +62,7 @@ const SetupWizard = () => {
                     </div>
 
                     {step === 1 ? (
-                        <StepCredentials config={config} onNext={handleNextStep} />
+                        <StepCredentials onNext={handleNextStep} />
                     ) : (
                         <StepTargetBranch onComplete={handleComplete} />
                     )}

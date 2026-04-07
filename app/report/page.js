@@ -16,7 +16,7 @@ const queryClient = new QueryClient();
 
 const ReportPageContent = () => {
     const router = useRouter();
-    const { config, isConfigured, getHeaders } = useBitbucketConfig();
+    const { isConfigured } = useBitbucketConfig();
     const { targetBranches, primaryBranch, isTargetConfigured } = useTargetBranches();
     const [mounted, setMounted] = useState(false);
 
@@ -30,11 +30,12 @@ const ReportPageContent = () => {
     const [filters, setFilters] = useState({
         merged: 'all',
         branchType: 'all',
-        name: ''
+        name: '',
+        author: ''
     });
 
     const { data: report, isLoading, isError, refetch } = useQuery({
-        queryKey: ['reportData', filters, primaryBranch, config],
+        queryKey: ['reportData', filters.merged, filters.branchType, filters.name, primaryBranch],
         queryFn: async () => {
             const params = {
                 primaryBranch: primaryBranch,
@@ -42,7 +43,7 @@ const ReportPageContent = () => {
                 branchType: filters.branchType === 'all' ? undefined : filters.branchType,
                 name: filters.name || undefined
             };
-            const res = await axios.get('/api/report', { params, headers: getHeaders() });
+            const res = await axios.get('/api/report', { params });
             return res.data;
         },
         enabled: !!(isConfigured && isTargetConfigured),
@@ -50,11 +51,27 @@ const ReportPageContent = () => {
         retry: 1
     });
 
+    // Ekstrapolasi unique author list dari data (client-side)
+    const authorList = React.useMemo(() => {
+        const data = report?.data;
+        if (!data) return [];
+        const names = data.map(b => b.authorName).filter(Boolean);
+        return [...new Set(names)].sort();
+    }, [report]);
+
+    // Filter author dilakukan client-side (tidak trigger re-fetch)
+    const filteredData = React.useMemo(() => {
+        const data = report?.data;
+        if (!data) return [];
+        if (!filters.author) return data;
+        return data.filter(b => b.authorName === filters.author);
+    }, [report, filters.author]);
+
     const { data: branchTypeList } = useQuery({
-        queryKey: ['branchTypeList', config, targetBranches],
+        queryKey: ['branchTypeList', targetBranches],
         queryFn: () => {
             const targetBranchesParam = `?targetBranches=${encodeURIComponent(JSON.stringify(targetBranches))}`;
-            return axios.get('/api/branches/constant/getBranchType' + targetBranchesParam, { headers: getHeaders() }).then((res) => res.data);
+            return axios.get('/api/branches/constant/getBranchType' + targetBranchesParam).then((res) => res.data);
         },
         enabled: !!(isConfigured && isTargetConfigured),
         refetchOnWindowFocus: false
@@ -158,6 +175,7 @@ const ReportPageContent = () => {
                     targetBranches={targetBranches}
                     primaryBranch={primaryBranch}
                     branchTypes={branchTypeList?.data}
+                    authors={authorList}
                 />
 
                 {/* ── Content ───────────────────────────────────────────── */}
@@ -174,8 +192,8 @@ const ReportPageContent = () => {
                     </div>
                 ) : (
                     <>
-                        <ReportSummary summary={report?.summary} targetBranch={primaryBranch} />
-                        <ReportTable data={report?.data} targetBranches={targetBranches} primaryBranch={primaryBranch} />
+                        <ReportSummary summary={report?.summary} targetBranch={primaryBranch} filteredCount={filteredData.length} />
+                        <ReportTable data={filteredData} targetBranches={targetBranches} primaryBranch={primaryBranch} />
                     </>
                 )}
 

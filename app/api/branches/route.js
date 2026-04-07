@@ -4,26 +4,17 @@ import axios from 'axios';
 import { getCredentials } from '@/app/lib/bitbucket';
 
 export async function GET(request) {
-    const creds = getCredentials(request);
+    const creds = await getCredentials();
     if (creds.error) return NextResponse.json({ error: creds.error }, { status: creds.status });
 
     const { username, appPassword, workspace, repoSlug, domainApi } = creds;
 
-    const { searchParams, origin } = new URL(request.url);
+    const { searchParams } = new URL(request.url);
     const name = searchParams.get('name') ?? null;
     const branchType = searchParams.get('branchType') ?? null;
     const pageParam = Number(searchParams.get('page')) || 1;
     const sizeParam = Number(searchParams.get('size')) || 10;
     const primaryBranch = searchParams.get('primaryBranch') || null;
-    
-    // Headers to pass to sub-requests
-    const bbHeaders = {
-        'x-bb-username': username,
-        'x-bb-password': appPassword,
-        'x-bb-workspace': workspace,
-        'x-bb-repo-slug': repoSlug,
-        'x-bb-domain': domainApi
-    };
 
     const buildSearchQuery = (name, branchType) => {
         if (name && branchType) {
@@ -56,20 +47,24 @@ export async function GET(request) {
 
         const branches = data?.values ?? [];
 
-        // Task 4: Only check primary merge status if requested
+        // Cek primary merge status langsung ke Bitbucket API (tanpa HTTP sub-request)
         const primaryStatusResults = await Promise.all(
             branches.map(async (branch) => {
                 if (!branch?.name || !primaryBranch) return null;
 
-                const mergeUrl = new URL('/api/branches/merge-status', origin);
-                mergeUrl.searchParams.set('from', branch.name);
-                mergeUrl.searchParams.append('to', primaryBranch);
-
                 try {
-                    const { data: mergeData } = await axios.get(mergeUrl.toString(), {
-                        headers: bbHeaders
-                    });
-                    return mergeData?.mergeStatus?.[primaryBranch]?.merged ?? false;
+                    const { data: commitData } = await axios.get(
+                        `${domainApi}/2.0/repositories/${workspace}/${repoSlug}/commits`,
+                        {
+                            auth: { username, password: appPassword },
+                            params: {
+                                include: branch.name,
+                                exclude: primaryBranch,
+                            },
+                        }
+                    );
+                    // Jika tidak ada commit yang belum di-merge, berarti sudah merged
+                    return commitData?.values?.length === 0;
                 } catch (error) {
                     console.error(`Failed primary-merge-status for ${branch.name}`, error?.message);
                     return false;
@@ -92,6 +87,7 @@ export async function GET(request) {
             const page = remote.searchParams.get('page');
             const pagelen = remote.searchParams.get('pagelen');
 
+            const { origin } = new URL(request.url);
             const local = new URL('/api/branches', origin);
             if (page) local.searchParams.set('page', page);
             if (pagelen) local.searchParams.set('size', pagelen);
