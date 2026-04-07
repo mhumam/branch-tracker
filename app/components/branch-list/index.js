@@ -252,16 +252,33 @@ const App = () => {
                         <div className="w-16 h-16 bg-rose-100 rounded-3xl flex items-center justify-center mx-auto mb-5">
                             <XCircle className="w-8 h-8 text-rose-500" />
                         </div>
-                        <h3 className="text-xl font-black text-rose-900 mb-2">Sync Failed</h3>
-                        <p className="text-sm text-rose-600 font-medium max-w-sm mx-auto mb-6">
-                            {error?.response?.data?.error || "Couldn't connect to Bitbucket. Check your credentials."}
-                        </p>
-                        <button
-                            onClick={() => setShowSettings(true)}
-                            className="px-6 py-3 bg-rose-600 text-white rounded-2xl text-sm font-bold hover:bg-rose-700 active:scale-95 transition-all shadow-lg shadow-rose-200"
-                        >
-                            Update Settings
-                        </button>
+                        {error?.response?.status === 429 ? (
+                            <>
+                                <h3 className="text-xl font-black text-rose-900 mb-2">Too Many Requests</h3>
+                                <p className="text-sm text-rose-600 font-medium max-w-sm mx-auto mb-6">
+                                    Bitbucket rate limit reached. Please wait a minute before trying again.
+                                </p>
+                                <button
+                                    onClick={() => window.location.reload()}
+                                    className="px-6 py-3 bg-rose-600 text-white rounded-2xl text-sm font-bold hover:bg-rose-700 active:scale-95 transition-all shadow-lg shadow-rose-200 inline-flex items-center gap-2"
+                                >
+                                    <RefreshCw className="w-4 h-4" /> Refresh Now
+                                </button>
+                            </>
+                        ) : (
+                            <>
+                                <h3 className="text-xl font-black text-rose-900 mb-2">Sync Failed</h3>
+                                <p className="text-sm text-rose-600 font-medium max-w-sm mx-auto mb-6">
+                                    {error?.response?.data?.error || "Couldn't connect to Bitbucket. Check your credentials."}
+                                </p>
+                                <button
+                                    onClick={() => setShowSettings(true)}
+                                    className="px-6 py-3 bg-rose-600 text-white rounded-2xl text-sm font-bold hover:bg-rose-700 active:scale-95 transition-all shadow-lg shadow-rose-200"
+                                >
+                                    Update Settings
+                                </button>
+                            </>
+                        )}
                     </div>
                 ) : data?.data?.length === 0 ? (
                     <div className="bg-white rounded-3xl shadow-sm p-16 text-center border border-dashed border-slate-200">

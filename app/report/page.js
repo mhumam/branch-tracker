@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { GitBranch, ChevronLeft, Download, Copy, RefreshCw, BarChart4, CheckCircle, Package } from 'lucide-react';
+import { GitBranch, ChevronLeft, Download, Copy, RefreshCw, BarChart4, CheckCircle, Package, XCircle } from 'lucide-react';
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
 import axios from 'axios';
 
@@ -34,15 +34,10 @@ const ReportPageContent = () => {
         author: ''
     });
 
-    const { data: report, isLoading, isError, refetch } = useQuery({
-        queryKey: ['reportData', filters.merged, filters.branchType, filters.name, primaryBranch],
+    const { data: report, isLoading, isError, refetch, error } = useQuery({
+        queryKey: ['reportData', primaryBranch],
         queryFn: async () => {
-            const params = {
-                primaryBranch: primaryBranch,
-                merged: filters.merged === 'all' ? undefined : filters.merged,
-                branchType: filters.branchType === 'all' ? undefined : filters.branchType,
-                name: filters.name || undefined
-            };
+            const params = { primaryBranch };
             const res = await axios.get('/api/report', { params });
             return res.data;
         },
@@ -59,13 +54,38 @@ const ReportPageContent = () => {
         return [...new Set(names)].sort();
     }, [report]);
 
-    // Filter author dilakukan client-side (tidak trigger re-fetch)
+    // Filter dilakukan sepenuhnya di sisi client (instan & hemat API)
     const filteredData = React.useMemo(() => {
         const data = report?.data;
         if (!data) return [];
-        if (!filters.author) return data;
-        return data.filter(b => b.authorName === filters.author);
-    }, [report, filters.author]);
+        
+        return data.filter(branch => {
+            // 1. Filter Nama (Case Insensitive)
+            if (filters.name && !branch.name.toLowerCase().includes(filters.name.toLowerCase())) {
+                return false;
+            }
+            
+            // 2. Filter Branch Type
+            if (filters.branchType !== 'all' && branch.branchType !== filters.branchType) {
+                return false;
+            }
+            
+            // 3. Filter Merged Status
+            if (filters.merged !== 'all') {
+                const isMerged = filters.merged === 'true';
+                if (branch.primaryMergeStatus !== isMerged) {
+                    return false;
+                }
+            }
+            
+            // 4. Filter Author
+            if (filters.author && branch.authorName !== filters.author) {
+                return false;
+            }
+            
+            return true;
+        });
+    }, [report, filters]);
 
     const { data: branchTypeList } = useQuery({
         queryKey: ['branchTypeList', targetBranches],
@@ -189,6 +209,39 @@ const ReportPageContent = () => {
                             <h3 className="text-lg sm:text-xl font-black text-slate-800 animate-pulse">Analysing Repository...</h3>
                             <p className="text-sm text-slate-400 font-medium">Fetching merge status, please wait.</p>
                         </div>
+                    </div>
+                ) : isError ? (
+                    <div className="bg-rose-50 border border-rose-100 rounded-3xl p-12 sm:p-20 text-center animate-in fade-in zoom-in-95 duration-500">
+                        <div className="w-16 h-16 bg-rose-100 rounded-3xl flex items-center justify-center mx-auto mb-5">
+                            <XCircle className="w-8 h-8 text-rose-500" />
+                        </div>
+                        {error?.response?.status === 429 ? (
+                            <>
+                                <h3 className="text-xl font-black text-rose-900 mb-2">Too Many Requests</h3>
+                                <p className="text-sm text-rose-600 font-medium max-w-sm mx-auto mb-6">
+                                    Bitbucket rate limit reached. The report contains many branches and many parallel requests. Please wait a minute before trying again.
+                                </p>
+                                <button
+                                    onClick={() => refetch()}
+                                    className="px-6 py-3 bg-rose-600 text-white rounded-2xl text-sm font-bold hover:bg-rose-700 active:scale-95 transition-all shadow-lg shadow-rose-200 inline-flex items-center gap-2"
+                                >
+                                    <RefreshCw className="w-4 h-4" /> Retry Report
+                                </button>
+                            </>
+                        ) : (
+                            <>
+                                <h3 className="text-xl font-black text-rose-900 mb-2">Report Generation Failed</h3>
+                                <p className="text-sm text-rose-600 font-medium max-w-sm mx-auto mb-6">
+                                    {error?.response?.data?.error || "An unexpected error occurred while generating the report."}
+                                </p>
+                                <button
+                                    onClick={() => refetch()}
+                                    className="px-6 py-3 bg-rose-600 text-white rounded-2xl text-sm font-bold hover:bg-rose-700 active:scale-95 transition-all shadow-lg shadow-rose-200"
+                                >
+                                    Try Again
+                                </button>
+                            </>
+                        )}
                     </div>
                 ) : (
                     <>
